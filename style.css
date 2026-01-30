@@ -1,0 +1,22 @@
+body {
+  font-family: system-ui, sans-serif;
+  padding: 12px;
+}
+
+h1 {
+  font-size: 1.4em;
+}
+
+#controls {
+  margin: 10px 0;
+}
+
+button {
+  font-size: 1em;
+  padding: 6px 12px;
+  margin-right: 6px;
+}
+
+ul {
+  padding-left: 20px;
+}
