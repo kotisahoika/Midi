@@ -1,43 +1,43 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>MIDI Piano Roll Viewer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIDI Piano Roll</title>
 
 <link rel="stylesheet" href="style.css">
 
-<!-- Tone.js & MIDI parser -->
 <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
 <script src="https://unpkg.com/@tonejs/midi/build/Midi.js"></script>
 </head>
 
 <body>
+
 <header>
-  <label class="file-btn">
-    MIDIを読み込む
+  <label class="file">
+    MIDI
     <input type="file" id="midiInput" accept=".mid,.midi">
   </label>
 
-  <button id="playBtn">▶ 再生</button>
-  <button id="stopBtn">■ 停止</button>
+  <button id="play">▶</button>
+  <button id="stop">■</button>
 
-  <label>
-    <input type="checkbox" id="followPlay" checked>
-    再生追従
+  <label class="chk">
+    <input type="checkbox" id="follow" checked>
+    追従
   </label>
 </header>
 
-<div id="trackList"></div>
+<div id="tracks"></div>
 
-<div id="rollWrapper">
-  <canvas id="keyboardCanvas"></canvas>
-  <div id="rollScroll">
-    <canvas id="rollCanvas"></canvas>
+<div id="viewer">
+  <canvas id="keyboard"></canvas>
+  <div id="scroll">
+    <canvas id="roll"></canvas>
   </div>
 </div>
 
-<div id="noteInfo">ノーツをタップすると音名表示</div>
+<div id="info">ノーツをタップすると音名表示</div>
 
 <script src="main.js"></script>
 </body>
