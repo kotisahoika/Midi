@@ -1,207 +1,176 @@
-let midiData;
-let parts = [];
-let selectedTrack = null;
-let isPlaying = false;
-
-const PPS = 100;
-const WHITE_H = 16;
-const BLACK_H = 10;
-
-const fileInput = document.getElementById("midiFile");
+const midiInput = document.getElementById("midiInput");
 const playBtn = document.getElementById("playBtn");
 const stopBtn = document.getElementById("stopBtn");
+const followPlay = document.getElementById("followPlay");
+
+const keyboardCanvas = document.getElementById("keyboardCanvas");
+const rollCanvas = document.getElementById("rollCanvas");
+const rollScroll = document.getElementById("rollScroll");
+const noteInfo = document.getElementById("noteInfo");
 const trackList = document.getElementById("trackList");
 
-const rollCanvas = document.getElementById("pianoRoll");
-const keyCanvas = document.getElementById("keyboard");
-const rollCtx = rollCanvas.getContext("2d");
-const keyCtx = keyCanvas.getContext("2d");
+const kCtx = keyboardCanvas.getContext("2d");
+const rCtx = rollCanvas.getContext("2d");
 
-const noteInfo = document.getElementById("noteInfo");
+let midi;
+let selectedTracks = [];
+let pixelsPerBeat = 60;
+let keyHeight = 16;
 
-fileInput.addEventListener("change", loadMidi);
-playBtn.addEventListener("click", play);
-stopBtn.addEventListener("click", stop);
-rollCanvas.addEventListener("click", onRollClick);
+let synths = [];
+let startTime = 0;
+let isPlaying = false;
 
-async function loadMidi(e) {
+midiInput.addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const buf = await file.arrayBuffer();
-  midiData = new Midi(buf);
+  const buffer = await file.arrayBuffer();
+  midi = new Midi(buffer);
 
-  setupTracks();
-  playBtn.disabled = false;
-  stopBtn.disabled = false;
-}
+  buildTrackList();
+  drawAll();
+});
 
-function setupTracks() {
+function buildTrackList() {
   trackList.innerHTML = "";
-  parts.forEach(p => p.dispose());
-  parts = [];
+  selectedTracks = [];
 
-  midiData.tracks.forEach((track, i) => {
-    const li = document.createElement("li");
+  midi.tracks.forEach((track, i) => {
+    if (track.notes.length === 0) return;
 
-    const check = document.createElement("input");
-    check.type = "checkbox";
-    check.checked = true;
+    const div = document.createElement("div");
+    div.className = "track";
 
-    const label = document.createElement("span");
-    label.textContent = track.name || `Track ${i + 1}`;
-    label.addEventListener("click", () => selectTrack(i));
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = true;
+    cb.onchange = () => {
+      if (cb.checked) selectedTracks.push(i);
+      else selectedTracks = selectedTracks.filter(t => t !== i);
+      drawAll();
+    };
 
-    check.addEventListener("change", () => {
-      parts[i].mute = !check.checked;
-    });
+    selectedTracks.push(i);
 
-    li.appendChild(check);
-    li.appendChild(label);
-    trackList.appendChild(li);
-
-    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
-
-    const part = new Tone.Part((time, note) => {
-      synth.triggerAttackRelease(note.name, note.duration, time, note.velocity);
-    }, track.notes).start(0);
-
-    parts.push(part);
+    div.append(cb, ` Track ${i + 1}`);
+    trackList.appendChild(div);
   });
 }
 
-function selectTrack(i) {
-  selectedTrack = i;
-  [...trackList.querySelectorAll("span")].forEach((s, idx) =>
-    s.classList.toggle("selected", idx === i)
-  );
-  draw();
+function drawAll() {
+  if (!midi) return;
+
+  const totalBeats = midi.durationTicks / midi.header.ppq;
+  rollCanvas.width = totalBeats * pixelsPerBeat;
+  rollCanvas.height = 128 * keyHeight;
+  keyboardCanvas.height = rollCanvas.height;
+
+  drawKeyboard();
+  drawGrid();
+  drawNotes();
 }
 
-async function play() {
-  if (isPlaying) return;
-  await Tone.start();
-  Tone.Transport.start();
-  isPlaying = true;
-  animate();
-}
+function drawKeyboard() {
+  keyboardCanvas.width = 60;
 
-function stop() {
-  Tone.Transport.stop();
-  Tone.Transport.seconds = 0;
-  isPlaying = false;
-  draw();
-}
+  for (let n = 0; n < 128; n++) {
+    const y = rollCanvas.height - (n + 1) * keyHeight;
+    const isBlack = [1,3,6,8,10].includes(n % 12);
 
-function isBlackKey(midi) {
-  return [1, 3, 6, 8, 10].includes(midi % 12);
-}
+    kCtx.fillStyle = isBlack ? "#333" : "#666";
+    kCtx.fillRect(0, y, keyboardCanvas.width, keyHeight);
 
-function midiToNote(m) {
-  const names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-  return names[m % 12] + (Math.floor(m / 12) - 1);
-}
-
-function draw() {
-  if (selectedTrack === null) return;
-
-  const notes = midiData.tracks[selectedTrack].notes;
-  const min = Math.min(...notes.map(n => n.midi));
-  const max = Math.max(...notes.map(n => n.midi));
-  const dur = Math.max(...notes.map(n => n.time + n.duration));
-
-  rollCanvas.width = dur * PPS;
-  rollCanvas.height = (max - min + 1) * WHITE_H;
-  keyCanvas.height = rollCanvas.height;
-
-  drawKeyboardAndGrid(min, max);
-  drawNotes(notes, min, max);
-}
-
-function drawKeyboardAndGrid(min, max) {
-  keyCtx.clearRect(0, 0, keyCanvas.width, keyCanvas.height);
-  rollCtx.clearRect(0, 0, rollCanvas.width, rollCanvas.height);
-
-  for (let m = min; m <= max; m++) {
-    const row = max - m;
-    const black = isBlackKey(m);
-    const h = black ? BLACK_H : WHITE_H;
-    const y = row * WHITE_H + (black ? (WHITE_H - BLACK_H) / 2 : 0);
-
-    rollCtx.fillStyle = black ? "#1e1e1e" : "#262626";
-    rollCtx.fillRect(0, y, rollCanvas.width, h);
-
-    rollCtx.strokeStyle = m % 12 === 0 ? "#444" : "#333";
-    rollCtx.lineWidth = m % 12 === 0 ? 2 : 1;
-    rollCtx.beginPath();
-    rollCtx.moveTo(0, y);
-    rollCtx.lineTo(rollCanvas.width, y);
-    rollCtx.stroke();
-
-    keyCtx.fillStyle = black ? "#333" : "#eee";
-    keyCtx.fillRect(0, y, keyCanvas.width, h);
-    keyCtx.strokeStyle = "#000";
-    keyCtx.strokeRect(0, y, keyCanvas.width, h);
-
-    if (!black) {
-      keyCtx.fillStyle = "#000";
-      keyCtx.font = "10px system-ui";
-      keyCtx.fillText(midiToNote(m), 4, y + h - 4);
+    if (n % 12 === 0) {
+      kCtx.fillStyle = "#fff";
+      kCtx.fillText(noteName(n), 4, y + 12);
     }
   }
 }
 
-function drawNotes(notes, min, max) {
-  const now = Tone.Transport.seconds;
+function drawGrid() {
+  const beats = rollCanvas.width / pixelsPerBeat;
 
-  notes.forEach(n => {
-    const black = isBlackKey(n.midi);
-    const h = black ? BLACK_H : WHITE_H;
-    const yBase = (max - n.midi) * WHITE_H;
-    const y = yBase + (black ? (WHITE_H - BLACK_H) / 2 : 0);
-
-    const x = n.time * PPS;
-    const w = n.duration * PPS;
-
-    const active = now >= n.time && now <= n.time + n.duration;
-    rollCtx.fillStyle = active ? "#ff7043" : "#4caf50";
-    rollCtx.fillRect(x, y, w, h - 1);
-  });
-
-  rollCtx.strokeStyle = "red";
-  rollCtx.beginPath();
-  rollCtx.moveTo(now * PPS, 0);
-  rollCtx.lineTo(now * PPS, rollCanvas.height);
-  rollCtx.stroke();
+  rCtx.strokeStyle = "#333";
+  for (let b = 0; b <= beats; b++) {
+    const x = b * pixelsPerBeat;
+    rCtx.beginPath();
+    rCtx.moveTo(x, 0);
+    rCtx.lineTo(x, rollCanvas.height);
+    rCtx.stroke();
+  }
 }
 
-function onRollClick(e) {
-  if (selectedTrack === null) return;
+function drawNotes() {
+  selectedTracks.forEach((ti, idx) => {
+    const track = midi.tracks[ti];
+    rCtx.fillStyle = `hsl(${idx * 60}, 70%, 60%)`;
 
+    track.notes.forEach(note => {
+      const x = note.ticks / midi.header.ppq * pixelsPerBeat;
+      const w = note.durationTicks / midi.header.ppq * pixelsPerBeat;
+      const y = rollCanvas.height - (note.midi + 1) * keyHeight;
+
+      rCtx.fillRect(x, y, w, keyHeight - 1);
+    });
+  });
+}
+
+rollCanvas.addEventListener("click", e => {
   const rect = rollCanvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
+  const x = e.clientX - rect.left + rollScroll.scrollLeft;
   const y = e.clientY - rect.top;
 
-  const notes = midiData.tracks[selectedTrack].notes;
-  const max = Math.max(...notes.map(n => n.midi));
+  const midiNote = Math.floor((rollCanvas.height - y) / keyHeight);
+  noteInfo.textContent = `音名: ${noteName(midiNote)}`;
+});
 
-  for (const n of notes) {
-    const black = isBlackKey(n.midi);
-    const h = black ? BLACK_H : WHITE_H;
-    const yBase = (max - n.midi) * WHITE_H;
-    const ny = yBase + (black ? (WHITE_H - BLACK_H) / 2 : 0);
-    const nx = n.time * PPS;
-    const nw = n.duration * PPS;
-
-    if (x >= nx && x <= nx + nw && y >= ny && y <= ny + h) {
-      noteInfo.textContent = `音: ${n.name} / 開始 ${n.time.toFixed(2)}s / 長さ ${n.duration.toFixed(2)}s`;
-      return;
-    }
-  }
+function noteName(n) {
+  const names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  return names[n % 12] + Math.floor(n / 12 - 1);
 }
 
-function animate() {
-  if (!isPlaying) return;
-  draw();
-  requestAnimationFrame(animate);
+playBtn.onclick = async () => {
+  if (!midi) return;
+  await Tone.start();
+
+  Tone.Transport.cancel();
+  synths.forEach(s => s.dispose());
+  synths = [];
+
+  selectedTracks.forEach(ti => {
+    const synth = new Tone.PolySynth().toDestination();
+    synths.push(synth);
+
+    midi.tracks[ti].notes.forEach(note => {
+      Tone.Transport.schedule(time => {
+        synth.triggerAttackRelease(
+          Tone.Frequency(note.midi, "midi"),
+          note.duration,
+          time,
+          note.velocity
+        );
+      }, note.time);
+    });
+  });
+
+  Tone.Transport.start();
+  isPlaying = true;
+  startFollow();
+};
+
+stopBtn.onclick = () => {
+  Tone.Transport.stop();
+  isPlaying = false;
+};
+
+function startFollow() {
+  function loop() {
+    if (!isPlaying || !followPlay.checked) return;
+
+    const t = Tone.Transport.seconds;
+    rollScroll.scrollLeft = t * pixelsPerBeat * (midi.header.tempos[0]?.bpm || 120) / 60;
+    requestAnimationFrame(loop);
+  }
+  loop();
 }
