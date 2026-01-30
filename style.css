@@ -18,13 +18,18 @@ ul {
 }
 
 li {
-  cursor: pointer;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 li.selected {
   font-weight: bold;
   color: #1565c0;
+}
+
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 #pianoRollWrapper {
