@@ -1,84 +1,68 @@
 body {
   margin: 0;
-  background: #121212;
-  color: #e0e0e0;
   font-family: system-ui, sans-serif;
+  background: #111;
+  color: #eee;
 }
 
 header {
-  padding: 12px;
-  background: #1e1e1e;
-  border-bottom: 1px solid #333;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #222;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-h1 {
-  font-size: 1.2em;
-  margin: 0;
+button {
+  padding: 6px 10px;
+  background: #444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
 }
 
-.panel {
-  padding: 12px;
-  border-bottom: 1px solid #333;
+.file-btn {
+  background: #555;
+  padding: 6px 10px;
+  border-radius: 6px;
 }
 
-.controls button {
-  font-size: 1.2em;
-  padding: 6px 14px;
-  margin-right: 6px;
+.file-btn input {
+  display: none;
 }
 
 #trackList {
-  list-style: none;
-  padding: 0;
+  padding: 8px;
+  border-bottom: 1px solid #333;
 }
 
-#trackList li {
+.track {
+  margin-bottom: 4px;
+}
+
+#rollWrapper {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  height: calc(100vh - 140px);
 }
 
-#trackList span {
-  cursor: pointer;
-}
-
-#trackList span.selected {
-  color: #64b5f6;
-  font-weight: bold;
-}
-
-#rollContainer {
-  display: flex;
-  height: 360px;
-  border: 1px solid #333;
-  background: #181818;
-}
-
-#keyboardWrapper {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: #111;
-  border-right: 1px solid #333;
-}
-
-#keyboard {
-  width: 70px;
+#keyboardCanvas {
+  width: 60px;
+  background: #222;
 }
 
 #rollScroll {
+  overflow: auto;
   flex: 1;
-  overflow-x: scroll;
-  overflow-y: hidden;
 }
 
-#pianoRoll {
-  display: block;
+#rollCanvas {
+  background: #181818;
 }
 
 #noteInfo {
-  margin-top: 8px;
-  font-size: 0.9em;
-  color: #90caf9;
+  padding: 6px;
+  font-size: 14px;
+  background: #222;
+  border-top: 1px solid #333;
 }
