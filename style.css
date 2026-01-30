@@ -1,42 +1,70 @@
 body {
+  margin: 0;
+  background: #121212;
+  color: #e0e0e0;
   font-family: system-ui, sans-serif;
+}
+
+header {
   padding: 12px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
 }
 
-#controls {
-  margin: 10px 0;
+h1 {
+  font-size: 1.2em;
+  margin: 0;
 }
 
-button {
-  font-size: 1em;
-  padding: 6px 12px;
+.panel {
+  padding: 12px;
+  border-bottom: 1px solid #333;
+}
+
+.controls button {
+  font-size: 1.2em;
+  padding: 6px 14px;
   margin-right: 6px;
 }
 
-ul {
-  padding-left: 20px;
+#trackList {
+  list-style: none;
+  padding: 0;
 }
 
-li {
-  margin-bottom: 6px;
-}
-
-li.selected {
-  font-weight: bold;
-  color: #1565c0;
-}
-
-.track-row {
+#trackList li {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 6px;
 }
 
-#pianoRollWrapper {
+#trackList span {
+  cursor: pointer;
+}
+
+#trackList span.selected {
+  color: #64b5f6;
+  font-weight: bold;
+}
+
+#rollWrapper {
+  display: flex;
   overflow-x: scroll;
-  border: 1px solid #ccc;
+  border: 1px solid #333;
+  background: #181818;
 }
 
 canvas {
-  height: 240px;
+  display: block;
+}
+
+#keyboard {
+  width: 60px;
+}
+
+#noteInfo {
+  margin-top: 8px;
+  font-size: 0.9em;
+  color: #90caf9;
 }
