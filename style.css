@@ -48,19 +48,33 @@ h1 {
   font-weight: bold;
 }
 
-#rollWrapper {
+#rollContainer {
   display: flex;
-  overflow-x: scroll;
+  height: 360px;
   border: 1px solid #333;
   background: #181818;
 }
 
-canvas {
-  display: block;
+#keyboardWrapper {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #111;
+  border-right: 1px solid #333;
 }
 
 #keyboard {
-  width: 60px;
+  width: 70px;
+}
+
+#rollScroll {
+  flex: 1;
+  overflow-x: scroll;
+  overflow-y: hidden;
+}
+
+#pianoRoll {
+  display: block;
 }
 
 #noteInfo {
