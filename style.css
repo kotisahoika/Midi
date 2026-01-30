@@ -3,10 +3,6 @@ body {
   padding: 12px;
 }
 
-h1 {
-  font-size: 1.4em;
-}
-
 #controls {
   margin: 10px 0;
 }
@@ -19,4 +15,23 @@ button {
 
 ul {
   padding-left: 20px;
+}
+
+li {
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+li.selected {
+  font-weight: bold;
+  color: #1565c0;
+}
+
+#pianoRollWrapper {
+  overflow-x: scroll;
+  border: 1px solid #ccc;
+}
+
+canvas {
+  height: 240px;
 }
