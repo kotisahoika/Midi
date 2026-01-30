@@ -1,8 +1,12 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
   background: #111;
   color: #eee;
+  font-family: system-ui, sans-serif;
 }
 
 header {
@@ -11,58 +15,53 @@ header {
   padding: 8px;
   background: #222;
   align-items: center;
-  flex-wrap: wrap;
 }
 
-button {
-  padding: 6px 10px;
+button, .file {
   background: #444;
   color: #fff;
   border: none;
-  border-radius: 6px;
-}
-
-.file-btn {
-  background: #555;
   padding: 6px 10px;
   border-radius: 6px;
 }
 
-.file-btn input {
+.file input {
   display: none;
 }
 
-#trackList {
-  padding: 8px;
+.chk {
+  font-size: 14px;
+}
+
+#tracks {
+  padding: 6px;
+  background: #181818;
   border-bottom: 1px solid #333;
 }
 
-.track {
-  margin-bottom: 4px;
-}
-
-#rollWrapper {
+#viewer {
   display: flex;
   height: calc(100vh - 140px);
 }
 
-#keyboardCanvas {
-  width: 60px;
+#keyboard {
   background: #222;
+  flex-shrink: 0;
 }
 
-#rollScroll {
+#scroll {
   overflow: auto;
   flex: 1;
-}
-
-#rollCanvas {
   background: #181818;
 }
 
-#noteInfo {
+#roll {
+  background: #181818;
+}
+
+#info {
   padding: 6px;
-  font-size: 14px;
   background: #222;
   border-top: 1px solid #333;
+  font-size: 14px;
 }
