@@ -12,15 +12,18 @@ const trackList = document.getElementById("trackList");
 const kCtx = keyboardCanvas.getContext("2d");
 const rCtx = rollCanvas.getContext("2d");
 
-let midi;
+let midi = null;
 let selectedTracks = [];
-let pixelsPerBeat = 60;
-let keyHeight = 16;
 
-let synths = [];
-let startTime = 0;
+const keyHeight = 16;
+const keyboardWidth = 60;
+const pixelsPerBeat = 80;
+
 let isPlaying = false;
 
+/* ===============================
+   MIDI 読み込み
+================================ */
 midiInput.addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -29,120 +32,153 @@ midiInput.addEventListener("change", async e => {
   midi = new Midi(buffer);
 
   buildTrackList();
-  drawAll();
+  redraw();
 });
 
+/* ===============================
+   トラック一覧
+================================ */
 function buildTrackList() {
   trackList.innerHTML = "";
   selectedTracks = [];
 
-  midi.tracks.forEach((track, i) => {
+  midi.tracks.forEach((track, index) => {
     if (track.notes.length === 0) return;
 
-    const div = document.createElement("div");
-    div.className = "track";
+    selectedTracks.push(index);
+
+    const label = document.createElement("label");
+    label.className = "track";
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.checked = true;
     cb.onchange = () => {
-      if (cb.checked) selectedTracks.push(i);
-      else selectedTracks = selectedTracks.filter(t => t !== i);
-      drawAll();
+      if (cb.checked) {
+        if (!selectedTracks.includes(index)) {
+          selectedTracks.push(index);
+        }
+      } else {
+        selectedTracks = selectedTracks.filter(i => i !== index);
+      }
+      redraw();
     };
 
-    selectedTracks.push(i);
-
-    div.append(cb, ` Track ${i + 1}`);
-    trackList.appendChild(div);
+    label.appendChild(cb);
+    label.append(` Track ${index + 1}`);
+    trackList.appendChild(label);
   });
 }
 
-function drawAll() {
+/* ===============================
+   再描画
+================================ */
+function redraw() {
   if (!midi) return;
 
   const totalBeats = midi.durationTicks / midi.header.ppq;
+
   rollCanvas.width = totalBeats * pixelsPerBeat;
   rollCanvas.height = 128 * keyHeight;
+
+  keyboardCanvas.width = keyboardWidth;
   keyboardCanvas.height = rollCanvas.height;
+
+  rCtx.clearRect(0, 0, rollCanvas.width, rollCanvas.height);
+  kCtx.clearRect(0, 0, keyboardCanvas.width, keyboardCanvas.height);
 
   drawKeyboard();
   drawGrid();
   drawNotes();
 }
 
+/* ===============================
+   鍵盤描画
+================================ */
 function drawKeyboard() {
-  keyboardCanvas.width = 60;
-
-  for (let n = 0; n < 128; n++) {
-    const y = rollCanvas.height - (n + 1) * keyHeight;
-    const isBlack = [1,3,6,8,10].includes(n % 12);
+  for (let midiNote = 0; midiNote < 128; midiNote++) {
+    const y = rollCanvas.height - (midiNote + 1) * keyHeight;
+    const isBlack = [1, 3, 6, 8, 10].includes(midiNote % 12);
 
     kCtx.fillStyle = isBlack ? "#333" : "#666";
-    kCtx.fillRect(0, y, keyboardCanvas.width, keyHeight);
+    kCtx.fillRect(0, y, keyboardWidth, keyHeight);
 
-    if (n % 12 === 0) {
+    if (midiNote % 12 === 0) {
       kCtx.fillStyle = "#fff";
-      kCtx.fillText(noteName(n), 4, y + 12);
+      kCtx.font = "10px sans-serif";
+      kCtx.fillText(noteName(midiNote), 4, y + 12);
     }
   }
 }
 
+/* ===============================
+   小節・拍グリッド
+================================ */
 function drawGrid() {
   const beats = rollCanvas.width / pixelsPerBeat;
 
-  rCtx.strokeStyle = "#333";
   for (let b = 0; b <= beats; b++) {
-    const x = b * pixelsPerBeat;
+    rCtx.strokeStyle = b % 4 === 0 ? "#444" : "#2a2a2a";
     rCtx.beginPath();
-    rCtx.moveTo(x, 0);
-    rCtx.lineTo(x, rollCanvas.height);
+    rCtx.moveTo(b * pixelsPerBeat, 0);
+    rCtx.lineTo(b * pixelsPerBeat, rollCanvas.height);
     rCtx.stroke();
   }
 }
 
+/* ===============================
+   ノーツ描画（★ここが一番重要）
+================================ */
 function drawNotes() {
-  selectedTracks.forEach((ti, idx) => {
-    const track = midi.tracks[ti];
-    rCtx.fillStyle = `hsl(${idx * 60}, 70%, 60%)`;
+  selectedTracks.forEach((trackIndex, colorIndex) => {
+    const track = midi.tracks[trackIndex];
+    const color = `hsl(${colorIndex * 60}, 70%, 60%)`;
+
+    rCtx.fillStyle = color;
 
     track.notes.forEach(note => {
-      const x = note.ticks / midi.header.ppq * pixelsPerBeat;
-      const w = note.durationTicks / midi.header.ppq * pixelsPerBeat;
-      const y = rollCanvas.height - (note.midi + 1) * keyHeight;
+      const x =
+        (note.ticks / midi.header.ppq) * pixelsPerBeat;
+      const width =
+        (note.durationTicks / midi.header.ppq) * pixelsPerBeat;
+      const y =
+        rollCanvas.height - (note.midi + 1) * keyHeight;
 
-      rCtx.fillRect(x, y, w, keyHeight - 1);
+      rCtx.fillRect(x, y, width, keyHeight - 1);
     });
   });
 }
 
+/* ===============================
+   ノーツタップ判定
+================================ */
 rollCanvas.addEventListener("click", e => {
   const rect = rollCanvas.getBoundingClientRect();
   const x = e.clientX - rect.left + rollScroll.scrollLeft;
   const y = e.clientY - rect.top;
 
-  const midiNote = Math.floor((rollCanvas.height - y) / keyHeight);
+  const midiNote = Math.floor(
+    (rollCanvas.height - y) / keyHeight
+  );
+
   noteInfo.textContent = `音名: ${noteName(midiNote)}`;
 });
 
-function noteName(n) {
-  const names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-  return names[n % 12] + Math.floor(n / 12 - 1);
-}
-
+/* ===============================
+   再生処理（最小・安定版）
+================================ */
 playBtn.onclick = async () => {
   if (!midi) return;
+
   await Tone.start();
-
+  Tone.Transport.stop();
   Tone.Transport.cancel();
-  synths.forEach(s => s.dispose());
-  synths = [];
 
-  selectedTracks.forEach(ti => {
+  selectedTracks.forEach(trackIndex => {
     const synth = new Tone.PolySynth().toDestination();
-    synths.push(synth);
+    const track = midi.tracks[trackIndex];
 
-    midi.tracks[ti].notes.forEach(note => {
+    track.notes.forEach(note => {
       Tone.Transport.schedule(time => {
         synth.triggerAttackRelease(
           Tone.Frequency(note.midi, "midi"),
@@ -156,21 +192,20 @@ playBtn.onclick = async () => {
 
   Tone.Transport.start();
   isPlaying = true;
-  startFollow();
 };
 
+/* ===============================
+   停止
+================================ */
 stopBtn.onclick = () => {
   Tone.Transport.stop();
   isPlaying = false;
 };
 
-function startFollow() {
-  function loop() {
-    if (!isPlaying || !followPlay.checked) return;
-
-    const t = Tone.Transport.seconds;
-    rollScroll.scrollLeft = t * pixelsPerBeat * (midi.header.tempos[0]?.bpm || 120) / 60;
-    requestAnimationFrame(loop);
-  }
-  loop();
+/* ===============================
+   音名変換
+================================ */
+function noteName(n) {
+  const names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  return names[n % 12] + (Math.floor(n / 12) - 1);
 }
