@@ -3,6 +3,10 @@ let parts = [];
 let selectedTrack = null;
 let isPlaying = false;
 
+const PPS = 100;
+const WHITE_H = 16;
+const BLACK_H = 10;
+
 const fileInput = document.getElementById("midiFile");
 const playBtn = document.getElementById("playBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -14,9 +18,6 @@ const rollCtx = rollCanvas.getContext("2d");
 const keyCtx = keyCanvas.getContext("2d");
 
 const noteInfo = document.getElementById("noteInfo");
-
-const PPS = 100;
-const NOTE_H = 14;
 
 fileInput.addEventListener("change", loadMidi);
 playBtn.addEventListener("click", play);
@@ -92,55 +93,8 @@ function stop() {
   draw();
 }
 
-function draw() {
-  if (selectedTrack === null) return;
-  const notes = midiData.tracks[selectedTrack].notes;
-
-  const min = Math.min(...notes.map(n => n.midi));
-  const max = Math.max(...notes.map(n => n.midi));
-  const dur = Math.max(...notes.map(n => n.time + n.duration));
-
-  rollCanvas.width = dur * PPS;
-  rollCanvas.height = (max - min + 1) * NOTE_H;
-  keyCanvas.height = rollCanvas.height;
-
-  drawKeyboard(min, max);
-
-  const now = Tone.Transport.seconds;
-
-  notes.forEach(n => {
-    const x = n.time * PPS;
-    const y = (max - n.midi) * NOTE_H;
-    const w = n.duration * PPS;
-
-    const active = now >= n.time && now <= n.time + n.duration;
-    rollCtx.fillStyle = active ? "#ff7043" : "#4caf50";
-    rollCtx.fillRect(x, y, w, NOTE_H - 2);
-  });
-
-  // 再生ヘッド
-  rollCtx.strokeStyle = "red";
-  rollCtx.beginPath();
-  rollCtx.moveTo(now * PPS, 0);
-  rollCtx.lineTo(now * PPS, rollCanvas.height);
-  rollCtx.stroke();
-}
-
-function drawKeyboard(min, max) {
-  keyCtx.clearRect(0, 0, keyCanvas.width, keyCanvas.height);
-
-  for (let m = min; m <= max; m++) {
-    const y = (max - m) * NOTE_H;
-    const isBlack = [1, 3, 6, 8, 10].includes(m % 12);
-
-    keyCtx.fillStyle = isBlack ? "#333" : "#eee";
-    keyCtx.fillRect(0, y, keyCanvas.width, NOTE_H - 1);
-
-    if (!isBlack) {
-      keyCtx.fillStyle = "#000";
-      keyCtx.fillText(midiToNote(m), 4, y + 11);
-    }
-  }
+function isBlackKey(midi) {
+  return [1, 3, 6, 8, 10].includes(midi % 12);
 }
 
 function midiToNote(m) {
@@ -148,24 +102,99 @@ function midiToNote(m) {
   return names[m % 12] + (Math.floor(m / 12) - 1);
 }
 
+function draw() {
+  if (selectedTrack === null) return;
+
+  const notes = midiData.tracks[selectedTrack].notes;
+  const min = Math.min(...notes.map(n => n.midi));
+  const max = Math.max(...notes.map(n => n.midi));
+  const dur = Math.max(...notes.map(n => n.time + n.duration));
+
+  rollCanvas.width = dur * PPS;
+  rollCanvas.height = (max - min + 1) * WHITE_H;
+  keyCanvas.height = rollCanvas.height;
+
+  drawKeyboardAndGrid(min, max);
+  drawNotes(notes, min, max);
+}
+
+function drawKeyboardAndGrid(min, max) {
+  keyCtx.clearRect(0, 0, keyCanvas.width, keyCanvas.height);
+  rollCtx.clearRect(0, 0, rollCanvas.width, rollCanvas.height);
+
+  for (let m = min; m <= max; m++) {
+    const row = max - m;
+    const black = isBlackKey(m);
+    const h = black ? BLACK_H : WHITE_H;
+    const y = row * WHITE_H + (black ? (WHITE_H - BLACK_H) / 2 : 0);
+
+    rollCtx.fillStyle = black ? "#1e1e1e" : "#262626";
+    rollCtx.fillRect(0, y, rollCanvas.width, h);
+
+    rollCtx.strokeStyle = m % 12 === 0 ? "#444" : "#333";
+    rollCtx.lineWidth = m % 12 === 0 ? 2 : 1;
+    rollCtx.beginPath();
+    rollCtx.moveTo(0, y);
+    rollCtx.lineTo(rollCanvas.width, y);
+    rollCtx.stroke();
+
+    keyCtx.fillStyle = black ? "#333" : "#eee";
+    keyCtx.fillRect(0, y, keyCanvas.width, h);
+    keyCtx.strokeStyle = "#000";
+    keyCtx.strokeRect(0, y, keyCanvas.width, h);
+
+    if (!black) {
+      keyCtx.fillStyle = "#000";
+      keyCtx.font = "10px system-ui";
+      keyCtx.fillText(midiToNote(m), 4, y + h - 4);
+    }
+  }
+}
+
+function drawNotes(notes, min, max) {
+  const now = Tone.Transport.seconds;
+
+  notes.forEach(n => {
+    const black = isBlackKey(n.midi);
+    const h = black ? BLACK_H : WHITE_H;
+    const yBase = (max - n.midi) * WHITE_H;
+    const y = yBase + (black ? (WHITE_H - BLACK_H) / 2 : 0);
+
+    const x = n.time * PPS;
+    const w = n.duration * PPS;
+
+    const active = now >= n.time && now <= n.time + n.duration;
+    rollCtx.fillStyle = active ? "#ff7043" : "#4caf50";
+    rollCtx.fillRect(x, y, w, h - 1);
+  });
+
+  rollCtx.strokeStyle = "red";
+  rollCtx.beginPath();
+  rollCtx.moveTo(now * PPS, 0);
+  rollCtx.lineTo(now * PPS, rollCanvas.height);
+  rollCtx.stroke();
+}
+
 function onRollClick(e) {
   if (selectedTrack === null) return;
+
   const rect = rollCanvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
   const notes = midiData.tracks[selectedTrack].notes;
-  const min = Math.min(...notes.map(n => n.midi));
   const max = Math.max(...notes.map(n => n.midi));
 
   for (const n of notes) {
+    const black = isBlackKey(n.midi);
+    const h = black ? BLACK_H : WHITE_H;
+    const yBase = (max - n.midi) * WHITE_H;
+    const ny = yBase + (black ? (WHITE_H - BLACK_H) / 2 : 0);
     const nx = n.time * PPS;
-    const ny = (max - n.midi) * NOTE_H;
     const nw = n.duration * PPS;
 
-    if (x >= nx && x <= nx + nw && y >= ny && y <= ny + NOTE_H) {
-      noteInfo.textContent =
-        `音: ${n.name} / 開始: ${n.time.toFixed(2)}s / 長さ: ${n.duration.toFixed(2)}s`;
+    if (x >= nx && x <= nx + nw && y >= ny && y <= ny + h) {
+      noteInfo.textContent = `音: ${n.name} / 開始 ${n.time.toFixed(2)}s / 長さ ${n.duration.toFixed(2)}s`;
       return;
     }
   }
